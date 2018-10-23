@@ -211,20 +211,38 @@ void InflationLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, 
   max_i = std::min(int(size_x), max_i);
   max_j = std::min(int(size_y), max_j);
 
+  auto surrounded = [&master_grid, &master_array, &size_x, &size_y](size_t idx, int i, int j) {
+    if (i == 0 || i == size_x -1 || j == 0 || j == size_y - 1)
+      return false;
+    if (master_array[idx - 1] != LETHAL_OBSTACLE || master_array[idx] != LETHAL_OBSTACLE ||
+        master_array[idx + 1 != LETHAL_OBSTACLE])
+      return false;
+    if (master_array[master_grid.getIndex(i, j - 1)] != LETHAL_OBSTACLE)
+      return false;
+    if (master_array[master_grid.getIndex(i, j + 1)] != LETHAL_OBSTACLE)
+      return false;
+    return true;
+  };
+
   // Inflation list; we append cells to visit in a list associated with its distance to the nearest obstacle
   // We use a map<distance, list> to emulate the priority queue used before, with a notable performance boost
 
   // Start with lethal obstacles: by definition distance is 0.0
   std::vector<CellData>& obs_bin = inflation_cells_[0.0];
+  size_t index;
+  unsigned char cost;
   for (int j = min_j; j < max_j; j++)
   {
     for (int i = min_i; i < max_i; i++)
     {
-      int index = master_grid.getIndex(i, j);
-      unsigned char cost = master_array[index];
+      index = master_grid.getIndex(i, j);
+      cost = master_array[index];
       if (cost == LETHAL_OBSTACLE)
       {
-        obs_bin.push_back(CellData(index, i, j, i, j));
+        if (surrounded(index, i, j))
+          seen_[index] = true;
+        else
+          obs_bin.push_back(CellData(index, i, j, i, j));
       }
     }
   }
